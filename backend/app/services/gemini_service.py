@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from typing import Dict, Any, List, Optional, Generator
+from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -42,7 +42,7 @@ class GeminiService:
         """Queries Gemini with Search Grounding for qualitative planet details & discovery context."""
         if not self.is_available or not self.client:
             return {
-                "summary": f"Web search grounding unavailable (Google API Key not active). Relying on NASA Exoplanet Archive parameters for {planet_name}.",
+                "summary": f"Web search grounding unavailable (using local database parameters for {planet_name}).",
                 "citations": [],
                 "sources": ["NASA Exoplanet Archive TAP Service"]
             }
@@ -53,58 +53,51 @@ class GeminiService:
             f"Do not make claims of confirmed habitability."
         )
 
-        try:
-            from google.genai import types
-            config = types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                tools=[types.Tool(google_search=types.GoogleSearch())],
-                temperature=0.2
-            )
-
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config
-            )
-
-            summary_text = response.text if response.text else f"No search grounding results for {planet_name}."
-            citations = []
-
-            # Extract search grounding metadata if present
+        for m_name in [self.model_name, "gemini-2.5-flash", "gemini-1.5-flash"]:
             try:
-                candidates = response.candidates
-                if candidates and candidates[0].grounding_metadata:
-                    gm = candidates[0].grounding_metadata
-                    if hasattr(gm, 'grounding_chunks') and gm.grounding_chunks:
-                        for chunk in gm.grounding_chunks:
-                            if hasattr(chunk, 'web') and chunk.web:
-                                citations.append({
-                                    "title": getattr(chunk.web, 'title', 'Web Source'),
-                                    "uri": getattr(chunk.web, 'uri', '#')
-                                })
-            except Exception:
-                pass
+                from google.genai import types
+                config = types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    tools=[types.Tool(google_search=types.GoogleSearch())],
+                    temperature=0.2
+                )
 
-            return {
-                "summary": summary_text,
-                "citations": citations,
-                "sources": ["Google Search Grounding", "NASA Exoplanet Archive"]
-            }
+                response = self.client.models.generate_content(
+                    model=m_name,
+                    contents=prompt,
+                    config=config
+                )
 
-        except Exception as e:
-            err_msg = str(e)
-            if "RESOURCE_EXHAUSTED" in err_msg or "429" in err_msg:
+                summary_text = response.text if response.text else f"No search grounding results for {planet_name}."
+                citations = []
+
+                try:
+                    candidates = response.candidates
+                    if candidates and candidates[0].grounding_metadata:
+                        gm = candidates[0].grounding_metadata
+                        if hasattr(gm, 'grounding_chunks') and gm.grounding_chunks:
+                            for chunk in gm.grounding_chunks:
+                                if hasattr(chunk, 'web') and chunk.web:
+                                    citations.append({
+                                        "title": getattr(chunk.web, 'title', 'Web Source'),
+                                        "uri": getattr(chunk.web, 'uri', '#')
+                                    })
+                except Exception:
+                    pass
+
                 return {
-                    "summary": "Free API quota exhausted for Gemini Search Grounding. Showing authoritative NASA Archive parameters only.",
-                    "citations": [],
-                    "sources": ["NASA Exoplanet Archive"]
+                    "summary": summary_text,
+                    "citations": citations,
+                    "sources": ["Google Search Grounding", "NASA Exoplanet Archive"]
                 }
-            print(f"[GeminiService] Search grounding error for {planet_name}: {e}")
-            return {
-                "summary": f"Could not retrieve web grounding context for {planet_name}. Details sourced directly from NASA Archive.",
-                "citations": [],
-                "sources": ["NASA Exoplanet Archive"]
-            }
+            except Exception as e:
+                continue
+
+        return {
+            "summary": f"Authoritative NASA Exoplanet Archive records loaded for {planet_name}. Web grounding context currently offline.",
+            "citations": [],
+            "sources": ["NASA Exoplanet Archive"]
+        }
 
     def chat_with_tools(
         self,
@@ -113,84 +106,139 @@ class GeminiService:
     ) -> Dict[str, Any]:
         """Tool-using chatbot router that executes local functions or returns answers."""
         user_message = messages[-1]['content'] if messages else ""
+        q_lower = user_message.lower()
 
-        if not self.is_available or not self.client:
-            # Fallback local tool responder if API key is not active
-            return self._local_tool_fallback(user_message, candidate_service)
+        # Try Gemini API with function context if available
+        if self.is_available and self.client:
+            for m_name in [self.model_name, "gemini-2.5-flash", "gemini-1.5-flash"]:
+                try:
+                    from google.genai import types
+                    tools_used = []
+                    source_table = None
 
-        try:
-            from google.genai import types
-            
-            # Simple keyword tool router for candidate queries
-            q_lower = user_message.lower()
-            tools_used = []
-            source_table = None
-
-            if "top" in q_lower or "rank" in q_lower or "best" in q_lower:
-                tools_used.append("filter_candidates")
-                res = candidate_service.get_candidates(min_composite_score=0.80, page_size=5)
-                source_table = res['items']
-                context_str = json.dumps(source_table, indent=2)
-                prompt = f"User Question: '{user_message}'\n\nRetrieved Candidate Data:\n{context_str}\n\nAnswer the user's question clearly using the data above."
-            elif any(name in q_lower for name in ["toi-700", "k2-72", "kepler", "ross 128", "wolf 1069", "gj 1061"]):
-                tools_used.append("get_candidate")
-                # find match
-                for p_name in ["k2-72 e", "toi-700 d", "ross 128 b", "kepler-1649 c", "gj 1061 c", "wolf 1069 b", "kepler-1512 b", "kepler-438 b"]:
-                    if p_name in q_lower:
-                        cand = candidate_service.get_candidate_by_id_or_name(p_name)
+                    if any(k in q_lower for k in ["top", "rank", "best", "highest", "list", "candidates"]):
+                        tools_used.append("filter_candidates")
+                        res = candidate_service.get_candidates(min_composite_score=0.80, page_size=5)
+                        source_table = res['items']
+                        context_str = json.dumps(source_table, indent=2)
+                        prompt = f"User Question: '{user_message}'\n\nRetrieved Candidate Data:\n{context_str}\n\nAnswer the question using the data above."
+                    else:
+                        cand = candidate_service.get_candidate_by_id_or_name(user_message.strip())
                         if cand:
+                            tools_used.append("get_candidate")
                             source_table = [cand]
-                            break
-                if not source_table:
-                    res = candidate_service.get_candidates(search_query=user_message.split()[0], page_size=3)
-                    source_table = res['items']
-                context_str = json.dumps(source_table, indent=2)
-                prompt = f"User Question: '{user_message}'\n\nRetrieved Candidate Data:\n{context_str}\n\nAnswer the question using the data above."
-            else:
-                prompt = user_message
+                            context_str = json.dumps(source_table, indent=2)
+                            prompt = f"User Question: '{user_message}'\n\nRetrieved Candidate Data:\n{context_str}\n\nAnswer the question using the data above."
+                        else:
+                            prompt = user_message
 
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    temperature=0.2
-                )
-            )
+                    response = self.client.models.generate_content(
+                        model=m_name,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_PROMPT,
+                            temperature=0.2
+                        )
+                    )
 
+                    if response.text:
+                        return {
+                            "answer": response.text,
+                            "tools_used": tools_used,
+                            "source_table": source_table,
+                            "citations": []
+                        }
+                except Exception as e:
+                    continue
+
+        # Smart local database fallback (Never repeats static text)
+        return self._local_tool_fallback(user_message, candidate_service)
+
+    def _local_tool_fallback(self, query: str, candidate_service: Any) -> Dict[str, Any]:
+        """Intelligent local candidate database tool fallback."""
+        q = query.strip().lower()
+
+        # 1. Check if user is asking for top/ranked candidates
+        if any(k in q for k in ["top", "rank", "best", "highest", "list", "candidate"]):
+            res = candidate_service.get_candidates(min_composite_score=0.85, page_size=5)
+            items = res['items']
+            lines = [
+                f"**{i['pl_name']}** — Host Star: {i['hostname']} ({i['stellar_type']}) | "
+                f"Radius: {i['pl_rade']} R⊕ | T_eq: {i['eq_temp_k']} K | Composite Score: **{i['composite_habitability_score']:.3f}**"
+                for i in items
+            ]
+            answer = "### Top Ranked Potentially Habitable Candidates (Local Catalog):\n\n" + "\n\n".join(lines)
             return {
-                "answer": response.text if response.text else "No response generated.",
-                "tools_used": tools_used,
-                "source_table": source_table,
+                "answer": answer,
+                "tools_used": ["filter_candidates_local"],
+                "source_table": items,
                 "citations": []
             }
 
-        except Exception as e:
-            err_str = str(e)
-            if "RESOURCE_EXHAUSTED" in err_str or "429" in err_str:
-                return {
-                    "answer": "⚠️ Free API quota exhausted. Using local offline database tool response.",
-                    "tools_used": ["local_fallback"],
-                    "source_table": None,
-                    "citations": []
-                }
-            print(f"[GeminiService] Chat error: {e}")
-            return self._local_tool_fallback(user_message, candidate_service)
+        # 2. Check if query matches a specific planet or host star name
+        cand = candidate_service.get_candidate_by_id_or_name(query)
+        if not cand:
+            # try word search
+            words = [w for w in q.split() if len(w) > 2 and w not in ["what", "is", "the", "score", "for", "tell", "me", "about"]]
+            for w in words:
+                cand = candidate_service.get_candidate_by_id_or_name(w)
+                if cand:
+                    break
 
-    def _local_tool_fallback(self, query: str, candidate_service: Any) -> Dict[str, Any]:
-        """Offline fallback tool logic when API key or quota is unavailable."""
-        q = query.lower()
-        if "top" in q or "rank" in q or "best" in q:
-            res = candidate_service.get_candidates(min_composite_score=0.85, page_size=5)
-            items = res['items']
-            top_names = [f"{i['pl_name']} (Composite Score: {i['composite_habitability_score']:.3f})" for i in items]
-            answer = "Top Ranked Potentially Habitable Candidates (Offline Mode):\n- " + "\n- ".join(top_names)
-            return {"answer": answer, "tools_used": ["filter_candidates_offline"], "source_table": items, "citations": []}
+        if cand:
+            answer = (
+                f"### {cand['pl_name']} Candidate Overview\n\n"
+                f"- **Host Star:** {cand['hostname']} (Spectral Type: {cand['stellar_type']})\n"
+                f"- **Planet Radius:** {cand['pl_rade']} R⊕ ({cand['radius_class']})\n"
+                f"- **Equilibrium Temp (T_eq):** {cand['eq_temp_k']} K\n"
+                f"- **Insolation Flux:** {cand['pl_insol']} S⊕\n"
+                f"- **Proxy ESI:** {cand['earth_similarity_index']:.3f}\n"
+                f"- **ExoMiner P(Real Planet):** {cand['P_real_planet']:.3f}\n"
+                f"- **Physics Habitability Score:** {cand['physics_habitability_score']:.3f}\n"
+                f"- **Composite Score:** **{cand['composite_habitability_score']:.3f}**\n\n"
+                f"*Note: ExoMiner classifies transit signal validity (real planet vs false positive), not habitability. Habitability scores are computed potential estimates.*"
+            )
+            return {
+                "answer": answer,
+                "tools_used": ["get_candidate_local"],
+                "source_table": [cand],
+                "citations": []
+            }
+
+        # 3. Check for general concepts
+        if "exominer" in q or "signal" in q or "vetting" in q:
+            answer = (
+                "**ExoMiner / ExoMiner++ Overview:**\n\n"
+                "NASA's ExoMiner is a deep learning classifier trained on Kepler and TESS transit light curves. "
+                "Its sole function is **transit signal vetting**—calculating the probability that a detected dip in brightness is caused by a real exoplanet candidate rather than an astrophysical false positive (such as an eclipsing binary) or instrumental artifact.\n\n"
+                "ExoMiner does **not** evaluate habitability or atmospheric composition."
+            )
+            return {"answer": answer, "tools_used": ["query_knowledge_base"], "source_table": None, "citations": []}
+
+        if "kopparapu" in q or "habitable zone" in q or "hz" in q:
+            answer = (
+                "**Kopparapu et al. Habitable Zone Model:**\n\n"
+                "Calculates stellar flux boundaries ($S_{eff}$) relative to Earth based on host star effective temperature ($T_{eff}$).\n"
+                "- **Recent Venus (Inner Conservative HZ):** $S_{eff} \\approx 1.78 S_\\oplus$\n"
+                "- **Maximum Greenhouse (Outer Conservative HZ):** $S_{eff} \\approx 0.36 S_\\oplus$\n"
+                "- **HZ Position Index:** $0.0$ to $1.0$ indicates position inside conservative HZ."
+            )
+            return {"answer": answer, "tools_used": ["query_knowledge_base"], "source_table": None, "citations": []}
+
+        # 4. Default query assistance with catalog top candidates
+        res = candidate_service.get_candidates(min_composite_score=0.85, page_size=3)
+        items = res['items']
+        names = ", ".join([f"**{i['pl_name']}** ({i['composite_habitability_score']:.3f})" for i in items])
         
+        answer = (
+            f"I searched the exoplanet catalog for **'{query}'**.\n\n"
+            f"Here are top ranked habitable candidates in our dataset: {names}.\n\n"
+            f"You can ask me about specific planets (e.g. *K2-72 e*, *TOI-700 d*, *Ross 128 b*), request rankings, or use the **Custom Detector** tab to calculate custom parameters."
+        )
         return {
-            "answer": "Scientific Framing Note: ExoMiner classifies transit signals, not habitability. Habitability scores are computed estimates.",
-            "tools_used": [],
-            "source_table": None,
+            "answer": answer,
+            "tools_used": ["catalog_search_fallback"],
+            "source_table": items,
             "citations": []
         }
 
