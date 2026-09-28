@@ -1,0 +1,9 @@
+{
+  "albedo": 0.3,
+  "earth_insolation_wm2": 1361.0,
+  "earth_teff_k": 5778.0,
+  "rocky_radius_threshold": 1.6,
+  "exominer_probability_threshold": 0.85,
+  "hz_model": "Kopparapu et al. (2013/2014)",
+  "monte_carlo_iterations": 1000
+}

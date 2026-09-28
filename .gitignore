@@ -1,5 +1,30 @@
+# Environment & Secrets
+.env
+*.env.local
+
+# Python Caches & Environments
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+env/
+
+# Node / Frontend Caches
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+.vite/
+
+# Operating System
 .DS_Store
+Thumbs.db
+
+# Large Data & Model Caches
 exoplanet_data/ExoMinerPP_TESS_vetting_catalog.csv
 exoplanet_data/exominerplusplus_catalog_labeled_tces_s1-s67_tess-spoc-2min_complete_1-14-2025_1039.csv
+data_cache/
