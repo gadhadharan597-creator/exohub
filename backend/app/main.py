@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from .api import health, candidates, planet_details, chat, detect
+from .api import health, candidates, planet_details, chat, detect, systems
 
 app = FastAPI(
     title="Exoplanet Habitability API & Web Explorer",
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(candidates.router, prefix="/api", tags=["Candidates"])
 app.include_router(planet_details.router, prefix="/api", tags=["Planet Details"])
+app.include_router(systems.router, prefix="/api", tags=["Multi-Planet Systems"])
 app.include_router(chat.router, prefix="/api", tags=["AI Assistant Chat"])
 app.include_router(detect.router, prefix="/api", tags=["Custom Habitability Detector"])
 

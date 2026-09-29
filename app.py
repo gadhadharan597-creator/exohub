@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from backend.app.services.candidate_service import CandidateService
 from backend.app.services.gemini_service import GeminiService
+from backend.app.services.orbit_service import orbit_service
 
 st.set_page_config(
     page_title="Exoplanet Habitability Explorer & AI Assistant",
@@ -91,6 +92,7 @@ module = st.sidebar.radio(
     "Select Module",
     options=[
         "🪐 Habitability Rankings Explorer",
+        "🌌 Multi-Planet Orbit Visualizer",
         "🤖 ExoBot AI Assistant",
         "🔎 Candidate Inspector & Predictor",
         "📊 Scientific Analytics & Insights"

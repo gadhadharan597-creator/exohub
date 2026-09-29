@@ -112,3 +112,68 @@ export async function runCustomDetect(data: DetectRequest): Promise<DetectRespon
   }
   return res.json();
 }
+
+export interface OrbitPlanet {
+  pl_name: string;
+  pl_orbper: number;
+  semi_major_axis_au: number;
+  pl_rade: number;
+  pl_insol: number | null;
+  calculated_eq_temp_k: number | null;
+  earth_similarity_index: number;
+  composite_habitability_score: number;
+  radius_class: string;
+  P_HZ: number;
+  is_in_conservative_hz: boolean;
+  is_in_optimistic_hz: boolean;
+  relative_speed: number;
+  color: string;
+}
+
+export interface HZBoundaries {
+  optimistic_inner_au: number;
+  conservative_inner_au: number;
+  conservative_outer_au: number;
+  optimistic_outer_au: number;
+  rv_flux: number;
+  rg_flux: number;
+  mg_flux: number;
+  em_flux: number;
+}
+
+export interface SystemOrbitResponse {
+  hostname: string;
+  found: boolean;
+  planet_count: number;
+  star: {
+    hostname: string;
+    st_teff: number;
+    st_rad: number;
+    st_mass: number;
+    st_lum: number;
+    stellar_type: string;
+  };
+  hz_boundaries: HZBoundaries;
+  planets: OrbitPlanet[];
+}
+
+export interface FeaturedSystem {
+  hostname: string;
+  total_planets: number;
+  habitable_candidates: number;
+  hz_planets: number;
+  sample_planet: string;
+}
+
+export async function fetchFeaturedSystems(): Promise<FeaturedSystem[]> {
+  const res = await fetch(`${API_BASE}/systems/featured`);
+  if (!res.ok) throw new Error('Failed to fetch featured systems');
+  return res.json();
+}
+
+export async function fetchSystemOrbit(hostname: string): Promise<SystemOrbitResponse> {
+  const res = await fetch(`${API_BASE}/systems/${encodeURIComponent(hostname)}/orbit`);
+  if (!res.ok) throw new Error('Failed to fetch system orbit data');
+  return res.json();
+}
+

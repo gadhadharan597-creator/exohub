@@ -5,10 +5,11 @@ import { PlanetDetailPage } from './pages/PlanetDetailPage';
 import { ChatPage } from './pages/ChatPage';
 import { DetectorPage } from './pages/DetectorPage';
 import { AboutPage } from './pages/AboutPage';
-import { Globe, Bot, Cpu, BookOpen, Sparkles } from 'lucide-react';
+import { OrbitVisualizer } from './components/OrbitVisualizer';
+import { Globe, Bot, Cpu, BookOpen, Sparkles, Compass } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'candidates' | 'detail' | 'chat' | 'detector' | 'about'>('candidates');
+  const [activeTab, setActiveTab] = useState<'candidates' | 'detail' | 'orbits' | 'chat' | 'detector' | 'about'>('candidates');
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
 
   const handleSelectPlanet = (name: string) => {
@@ -52,6 +53,15 @@ export const App: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('orbits')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${
+                activeTab === 'orbits' ? 'bg-space-cyan/20 text-space-cyan border border-space-cyan/30' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" /> Orbit Visualizer
+            </button>
+
+            <button
               onClick={() => setActiveTab('chat')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${
                 activeTab === 'chat' ? 'bg-space-cyan/20 text-space-cyan border border-space-cyan/30' : 'text-slate-400 hover:text-slate-200'
@@ -87,10 +97,18 @@ export const App: React.FC = () => {
           <RankedCandidatesPage onSelectCandidate={handleSelectPlanet} />
         )}
 
+        {activeTab === 'orbits' && (
+          <OrbitVisualizer
+            initialHostname="TRAPPIST-1"
+            onSelectPlanet={handleSelectPlanet}
+          />
+        )}
+
         {activeTab === 'detail' && selectedPlanet && (
           <PlanetDetailPage
             planetName={selectedPlanet}
             onBack={() => setActiveTab('candidates')}
+            onSelectPlanet={handleSelectPlanet}
           />
         )}
 
@@ -108,3 +126,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+

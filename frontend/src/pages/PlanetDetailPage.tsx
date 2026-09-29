@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { fetchCandidateDetails, PlanetDetailsResponse } from '../services/api';
 import { ArrowLeft, ExternalLink, ShieldCheck, Globe, AlertTriangle, RefreshCw } from 'lucide-react';
+import { OrbitVisualizer } from '../components/OrbitVisualizer';
 
 interface Props {
   planetName: string;
   onBack: () => void;
+  onSelectPlanet?: (planetName: string) => void;
 }
 
-export const PlanetDetailPage: React.FC<Props> = ({ planetName, onBack }) => {
+export const PlanetDetailPage: React.FC<Props> = ({ planetName, onBack, onSelectPlanet }) => {
   const [data, setData] = useState<PlanetDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +78,13 @@ export const PlanetDetailPage: React.FC<Props> = ({ planetName, onBack }) => {
           </span>
         </div>
       </div>
+
+      {/* Interactive System Orbit Visualizer */}
+      <OrbitVisualizer
+        initialHostname={data.hostname}
+        selectedPlanetName={data.planet_name}
+        onSelectPlanet={onSelectPlanet}
+      />
 
       {/* Main 2-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -166,3 +175,4 @@ export const PlanetDetailPage: React.FC<Props> = ({ planetName, onBack }) => {
     </div>
   );
 };
+

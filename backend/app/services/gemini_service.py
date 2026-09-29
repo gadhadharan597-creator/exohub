@@ -2,9 +2,11 @@ import os
 import json
 import time
 from typing import Dict, Any, List, Optional
-from dotenv import load_dotenv
-
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 SYSTEM_PROMPT = """You are an expert Exoplanet Science Assistant specializing in exoplanet vetting and habitability analysis.
 
