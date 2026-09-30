@@ -338,10 +338,28 @@ export const OrbitVisualizer: React.FC<OrbitVisualizerProps> = ({
       }
     });
 
-    if (closestPlanet) {
-      setHighlightedPlanet(closestPlanet);
-      if (onSelectPlanet) {
-        onSelectPlanet(closestPlanet.pl_name);
+       let closestPlanet: OrbitPlanet | null = null;
+     let minDist = 25; // click threshold
+ 
+     systemData.planets.forEach(p => {
+       const rPx = auToPx(p.semi_major_axis_au);
+       const angleRad = (anglesRef.current[p.pl_name] || 0) * (Math.PI / 180);
+       const px = centerX + rPx * Math.cos(angleRad);
+       const py = centerY + rPx * tiltY * Math.sin(angleRad);
+ 
+       const dist = Math.hypot(clickX - px, clickY - py);
+       if (dist < minDist) {
+         minDist = dist;
+         closestPlanet = p;
+       }
+     });
+ 
+     if (closestPlanet) {
+       setHighlightedPlanet(closestPlanet);
+       if (onSelectPlanet) {
+         onSelectPlanet(closestPlanet.pl_name);
+       }
+     }
       }
     }
   };
