@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "excludeFiles": "{frontend/**,exoplanet_data/**,screenshot/**,docs/**,tests/**,.pytest_cache/**,.streamlit/**,exo.ipynb,exo.py}"
+      }
     },
     {
       "src": "frontend/package.json",
