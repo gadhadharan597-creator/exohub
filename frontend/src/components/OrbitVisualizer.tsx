@@ -325,7 +325,7 @@ export const OrbitVisualizer: React.FC<OrbitVisualizerProps> = ({
     let closestPlanet: OrbitPlanet | null = null;
     let minDist = 25; // click threshold
 
-    systemData.planets.forEach(p => {
+    for (const p of systemData.planets) {
       const rPx = auToPx(p.semi_major_axis_au);
       const angleRad = (anglesRef.current[p.pl_name] || 0) * (Math.PI / 180);
       const px = centerX + rPx * Math.cos(angleRad);
@@ -336,7 +336,7 @@ export const OrbitVisualizer: React.FC<OrbitVisualizerProps> = ({
         minDist = dist;
         closestPlanet = p;
       }
-    });
+    }
 
     if (closestPlanet) {
       setHighlightedPlanet(closestPlanet);
