@@ -1,0 +1,17 @@
+# Ignore frontend source files from Python function bundle
+frontend/node_modules/
+frontend/src/
+frontend/public/
+
+# Ignore large datasets, notebooks, and screenshots
+exoplanet_data/
+screenshot/
+exo.ipynb
+exo.py
+docs/
+tests/
+.pytest_cache/
+.streamlit/
+.git/
+.agents/
+.claude/
