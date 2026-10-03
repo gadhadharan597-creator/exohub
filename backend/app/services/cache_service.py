@@ -1,10 +1,14 @@
 import os
 import json
 import time
+import tempfile
 from typing import Optional, Dict, Any
 
-CACHE_DIR = "data_cache"
-os.makedirs(CACHE_DIR, exist_ok=True)
+CACHE_DIR = os.path.join(tempfile.gettempdir(), "exohub_data_cache")
+try:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+except Exception:
+    pass
 
 class CacheService:
     def __init__(self, ttl_seconds: int = 86400):

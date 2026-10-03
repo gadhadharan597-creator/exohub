@@ -3,10 +3,26 @@ import pandas as pd
 import joblib
 from typing import Dict, Any, List, Optional
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+
+def _resolve_path(rel_path: str) -> str:
+    if os.path.isabs(rel_path) and os.path.exists(rel_path):
+        return rel_path
+    candidate_paths = [
+        os.path.join(PROJECT_ROOT, rel_path),
+        os.path.abspath(rel_path),
+        os.path.abspath(os.path.join("..", rel_path)),
+        os.path.abspath(os.path.join("/var/task", rel_path)),
+    ]
+    for p in candidate_paths:
+        if os.path.exists(p):
+            return p
+    return os.path.join(PROJECT_ROOT, rel_path)
+
 class CandidateService:
     def __init__(self, data_path: str = 'data/ranked_candidates.csv', model_path: str = 'models/habitability_model.joblib'):
-        self.data_path = data_path
-        self.model_path = model_path
+        self.data_path = _resolve_path(data_path)
+        self.model_path = _resolve_path(model_path)
         self.df: Optional[pd.DataFrame] = None
         self.model_data: Optional[Dict[str, Any]] = None
         self.is_loaded = False
