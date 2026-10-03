@@ -45,8 +45,12 @@ class CandidateService:
         print(f"[CandidateService] Loaded {len(self.df)} candidates from {self.data_path}")
 
         if os.path.exists(self.model_path):
-            self.model_data = joblib.load(self.model_path)
-            print(f"[CandidateService] Loaded model from {self.model_path}")
+            try:
+                self.model_data = joblib.load(self.model_path)
+                print(f"[CandidateService] Loaded model from {self.model_path}")
+            except Exception as e:
+                print(f"[CandidateService] Warning: Failed to load model from {self.model_path}: {e}")
+                self.model_data = None
         else:
             print(f"[CandidateService] Warning: Model file not found at {self.model_path}")
 
