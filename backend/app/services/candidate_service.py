@@ -8,11 +8,20 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 def _resolve_path(rel_path: str) -> str:
     if os.path.isabs(rel_path) and os.path.exists(rel_path):
         return rel_path
+
+    filename = os.path.basename(rel_path)
+    dirname = os.path.basename(os.path.dirname(rel_path))
+
     candidate_paths = [
         os.path.join(PROJECT_ROOT, rel_path),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "api", rel_path)),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "api", dirname, filename)),
         os.path.abspath(rel_path),
         os.path.abspath(os.path.join("..", rel_path)),
         os.path.abspath(os.path.join("/var/task", rel_path)),
+        os.path.abspath(os.path.join("/var/task/api", rel_path)),
+        os.path.abspath(os.path.join("/var/task/api", dirname, filename)),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "api", dirname, filename)),
     ]
     for p in candidate_paths:
         if os.path.exists(p):

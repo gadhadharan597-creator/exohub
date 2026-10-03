@@ -5,6 +5,7 @@
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
+        "includeFiles": ["data/**", "models/**", "api/data/**", "api/models/**"],
         "excludeFiles": "{frontend/**,exoplanet_data/**,screenshot/**,docs/**,tests/**,.pytest_cache/**,.streamlit/**,exo.ipynb,exo.py}"
       }
     },
