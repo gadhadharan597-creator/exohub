@@ -1,0 +1,15 @@
+exoplanet_data/
+screenshot/
+docs/
+tests/
+.pytest_cache/
+.streamlit/
+.agents/
+.claude/
+exo.ipynb
+exo.py
+app.py
+exoplanet_pipeline.py
+exoplanet_habitability_rankings.csv
+requirements-streamlit.txt
+.DS_Store
